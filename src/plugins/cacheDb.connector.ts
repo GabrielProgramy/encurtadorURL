@@ -9,7 +9,7 @@ async function cacheDbConnector(fastify: FastifyInstance, options: Object) {
   });
 
   redis.on("error", (error: any) => {
-    fastify.log.error("Erro de conexão com Redis: ", error);
+    fastify.log.error("Erro de conexão com Redis: ", error as never);
   });
 
   fastify.decorate("cache", redis);

@@ -1,37 +1,86 @@
 import type { FastifyInstance } from "fastify";
-import { postUrlSchema } from "./urls.schema.ts";
-import { UrlsSevices } from "./urls.service.ts";
+import type { ZodTypeProvider } from "fastify-type-provider-zod";
+import { deleteUrlSchema, postUrlSchema, putUrlSchema } from "./urls.schema.js";
+import { UrlsSevices, type UrlUpdateData } from "./urls.service.js";
+import { UrlMetricsService } from "./urlMetrics.service.js";
 
 async function urlRoutes(fastify: FastifyInstance, options: object) {
-  fastify.post("/", { schema: postUrlSchema }, async (request, reply) => {
-    try {
-      const { fullURL } = request.body as { fullURL: string };
+  const app = fastify.withTypeProvider<ZodTypeProvider>();
 
-      const url = await UrlsSevices.create(fastify.db, {
-        fullURL,
-      });
+  app.post("/", { schema: postUrlSchema }, async (request, reply) => {
+    const { full_url, slug } = request.body;
 
-      reply.code(201).send(url);
-    } catch (error) {
-      console.log(error);
-      reply.code(400).send({ error: "Erro ao criar URL" });
-    }
+    const url = await UrlsSevices.create(app.db, {
+      full_url,
+      slug: slug || "",
+    });
+
+    reply.code(201).send({
+      success: true,
+      data: url,
+    });
   });
 
-  fastify.get("/:shortCode", async (request, reply) => {
+  app.get("/:shortCode", async (request, reply) => {
     const { shortCode } = request.params as { shortCode: string };
 
-    const url = await UrlsSevices.findByCode(
-      fastify.db,
-      fastify.cache,
-      shortCode
+    const urlStringData = await UrlsSevices.findByCode(
+      app.db,
+      app.cache,
+      shortCode,
     );
 
-    if (!url) {
+    if (!urlStringData) {
       reply.code(404).send({ error: "URL não encontrada" });
     }
 
-    reply.redirect(url as string);
+    const objectURL: { full_url: string; urlId: string } = JSON.parse(
+      urlStringData as string,
+    );
+
+    await UrlMetricsService.create(app.db, {
+      url_id: objectURL.urlId,
+      ip_address: request.ip,
+      referrer: request.headers.referer || "",
+      user_agent: request.headers["user-agent"] || "",
+    });
+
+    reply.redirect(objectURL.full_url as string);
+  });
+
+  app.get("/", async (request, reply) => {
+    const urls = await UrlsSevices.findAll(app.db);
+
+    reply.status(200).send({
+      success: true,
+      data: urls,
+    });
+  });
+
+  app.put("/:urlId", { schema: putUrlSchema }, async (request, reply) => {
+    const { urlId } = request.params;
+
+    const { full_url, slug } = request.body;
+
+    const updatedData: UrlUpdateData = { id: urlId };
+
+    if (full_url !== undefined) updatedData.full_url = full_url;
+    if (slug !== undefined) updatedData.slug = slug;
+
+    const updateUrl = await UrlsSevices.update(app.db, updatedData);
+
+    reply.code(200).send({
+      success: true,
+      data: updateUrl,
+    });
+  });
+
+  app.delete("/:urlId", { schema: deleteUrlSchema }, async (request, reply) => {
+    const { urlId } = request.params;
+
+    await UrlsSevices.delete(app.db, urlId);
+
+    reply.status(204);
   });
 }
 

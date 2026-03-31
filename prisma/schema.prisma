@@ -5,19 +5,30 @@
 // Try Prisma Accelerate: https://pris.ly/cli/accelerate-init
 
 generator client {
-  provider = "prisma-client"
-  output   = "../generated/prisma"
+  provider = "prisma-client-js"
+  previewFeatures = ["relationJoins"]
+  output = "../generated/prisma"
 }
 
 datasource db {
   provider = "postgresql"
 }
 
-model Urls{
-	id String @id @default(uuid())
-	fullURL String
-	shortCode String
-	totalClicks Int
-	createdAt DateTime @default(now())
-	updatedAt DateTime @default(now())
+model Urls {
+  id         String       @id @default(uuid())
+  full_url   String
+  slug       String
+  createdAt  DateTime     @default(now())
+  updatedAt  DateTime     @default(now())
+  urlMetrics UrlMetrics[]
+}
+
+model UrlMetrics {
+  id          String   @id @default(uuid())
+  accessed_at DateTime @default(now())
+  ip_address  String
+  user_agent  String?
+  referrer    String?
+  url_id      String?
+  urls        Urls?    @relation(fields: [url_id], references: [id])
 }

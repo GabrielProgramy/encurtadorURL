@@ -6,17 +6,45 @@ services:
     ports:
       - "5432:5432"
     environment:
-      POSTGRES_USER: dev_sincero
-      POSTGRES_PASSWORD: 12345678
-      POSTGRES_DB: url_de_short
+      POSTGRES_USER: ${DB_USER}
+      POSTGRES_PASSWORD: ${DB_PASSWORD}
+      POSTGRES_DB: ${DB_NAME}
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U dev_sincero -d url_de_short"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
     volumes:
       - postgres_data:/var/lib/postgresql/data
-    restart: always
+
   cache:
     image: redis:7-alpine
     container_name: redis_cache
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
     ports:
       - "6379:6379"
-    restart: always
+  api:
+    build: .
+    ports:
+      - "3000:3000"
+    command: >
+      sh -c "npx prisma db push --url postgresql://${DB_USER}:${DB_PASSWORD}@db:5432/${DB_NAME}?schema=public && node src/index.js"
+    environment:
+      - DB_USER=${DB_USER}
+      - DB_PASSWORD=${DB_PASSWORD}
+      - DB_HOST=db
+      - DB_PORT=5432
+      - DB_NAME=${DB_NAME}
+      - REDIS_HOST=cache
+      - REDIS_PORT=6379
+    depends_on:
+      db:
+        condition: service_healthy
+      cache:
+        condition: service_healthy
 volumes:
   postgres_data:

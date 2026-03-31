@@ -1,8 +1,8 @@
-import { UrlsSevices } from "./urls.service.ts";
+import { UrlsSevices } from "./urls.service";
 
-import type { Urls } from "../../../generated/prisma/client.ts";
+import type { Urls } from "../../../generated/prisma";
 
-const fixedShortCode = "ADc1";
+const fixedSlug: string = "ADc1";
 
 const mockPrisma = {
   urls: {
@@ -17,24 +17,22 @@ const mockCache = {
 };
 
 const mockUrlToCreate = {
-  fullURL: "XXXXXXXXXXXXXXXXXXXXXX",
-  totalClicks: 0,
+  full_url: "XXXXXXXXXXXXXXXXXXXXXX",
+  slug: "T4Asd",
 };
 
 const mockCreatedUrl = {
   id: "id1",
   ...mockUrlToCreate,
-  shortCode: fixedShortCode,
-  totalClicks: 0,
+  slug: fixedSlug,
   createdAt: new Date(),
   updatedAt: new Date(),
 };
 
 const mockUrls: Urls = {
   id: "id1",
-  fullURL: "XXXXXXXXXXXXXXXXXXXXXX",
-  shortCode: fixedShortCode,
-  totalClicks: 0,
+  full_url: "XXXXXXXXXXXXXXXXXXXXXX",
+  slug: fixedSlug,
   createdAt: new Date(),
   updatedAt: new Date(),
 };
@@ -49,7 +47,9 @@ describe("UsersService", () => {
   });
 
   it("should be able a create new short url", async () => {
-    generateSpy.mockReturnValue(fixedShortCode);
+    generateSpy.mockReturnValue(
+      new Promise((resolve, reject) => resolve(fixedSlug)),
+    );
 
     mockPrisma.urls.create.mockResolvedValue(mockCreatedUrl);
 
@@ -61,9 +61,8 @@ describe("UsersService", () => {
     expect(mockPrisma.urls.create).toHaveBeenCalledTimes(1);
     expect(mockPrisma.urls.create).toHaveBeenCalledWith({
       data: {
-        fullURL: mockCreatedUrl.fullURL,
-        shortCode: mockCreatedUrl.shortCode,
-        totalClicks: mockCreatedUrl.totalClicks,
+        full_url: mockCreatedUrl.full_url,
+        slug: mockCreatedUrl.slug,
       },
     });
 
@@ -72,15 +71,15 @@ describe("UsersService", () => {
   });
 
   it("should be able a find url by short code by cache", async () => {
-    mockCache.get.mockResolvedValue(mockUrls.fullURL);
+    mockCache.get.mockResolvedValue(mockUrls.full_url);
 
     const result = await UrlsSevices.findByCode(
       mockPrisma as any,
       mockCache as any,
-      fixedShortCode
+      fixedSlug,
     );
 
-    expect(result).toEqual(mockUrls.fullURL);
+    expect(result).toEqual(mockUrls.full_url);
     expect(mockCache.get).toHaveBeenCalledTimes(1);
     expect(mockPrisma.urls.findFirst).not.toHaveBeenCalled();
 
@@ -94,10 +93,12 @@ describe("UsersService", () => {
     const result = await UrlsSevices.findByCode(
       mockPrisma as any,
       mockCache as any,
-      fixedShortCode
+      fixedSlug,
     );
 
-    expect(result).toEqual(mockUrls.fullURL);
+    const resultJSON = JSON.parse(result);
+
+    expect(resultJSON.full_url).toEqual(mockUrls.full_url);
     expect(mockCache.get).toHaveBeenCalledTimes(1);
     expect(mockCache.set).toHaveBeenCalledTimes(1);
     expect(mockPrisma.urls.findFirst).toHaveBeenCalledTimes(1);

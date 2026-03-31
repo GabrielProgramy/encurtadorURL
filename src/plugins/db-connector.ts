@@ -1,14 +1,16 @@
 import fp from "fastify-plugin";
 import { PrismaPg } from "@prisma/adapter-pg";
-import { PrismaClient } from "../../generated/prisma/client.ts";
+import { PrismaClient } from "../../generated/prisma";
 import type { FastifyInstance } from "fastify";
 
 async function dbConnector(fastify: FastifyInstance, options: Object) {
-  const adapter = new PrismaPg({ connectionString: process.env.DATABASE_URL });
+  const adapter = new PrismaPg({
+    connectionString: `postgresql://${process.env.DB_USER}:${process.env.DB_PASSWORD}@${process.env.DB_HOST}:${process.env.DB_PORT}/${process.env.DB_NAME}?schema=public`,
+  });
 
   const prisma = new PrismaClient({
     adapter,
-    log: ["error", "info", "query", "warn"],
+    log: ["error", "warn"],
   });
 
   try {
@@ -21,7 +23,7 @@ async function dbConnector(fastify: FastifyInstance, options: Object) {
       await instance.db.$disconnect();
     });
   } catch (error: any) {
-    fastify.log.error("Falha ao conectar com o banco!", error);
+    fastify.log.error("Falha ao conectar com o banco!", error as never);
   }
 }
 
