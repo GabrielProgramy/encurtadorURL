@@ -1,4 +1,4 @@
-# 🔗 URL Shortener API - High Performance Backend
+# 🔗 URL Shortener API
 
 API de encurtamento de URLs desenvolvida com **Fastify**, focada em altíssima performance, baixa latência e resiliência de infraestrutura através de **Docker** e **Redis**.
 
